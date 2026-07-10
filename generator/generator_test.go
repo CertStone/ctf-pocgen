@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"os"
 	"strings"
 	"testing"
 )
@@ -77,4 +78,53 @@ func TestGeneratePOM_NoChallengeClasses(t *testing.T) {
 	if !strings.Contains(pom, "<maven.compiler.source>11</maven.compiler.source>") {
 		t.Errorf("JDK 11 未生效")
 	}
+}
+
+// TestWriteBat_NoBOM 回归保护：.bat 必须不含 UTF-8 BOM。
+// BOM（EF BB BF）会被中文 Windows 的 cmd.exe 按 GBK 解码为「锘緻」拼到首行命令前，
+// 导致 `@echo off` 变成 `锘緻echo off` 而报「不是内部或外部命令」。
+// 同时验证换行为 CRLF，java 调用含 UTF-8 编码参数。
+func TestWriteBat_NoBOM(t *testing.T) {
+	dir := t.TempDir()
+	path := dir + "/compile-run.bat"
+	if err := WriteBat(path, CompileRunBAT); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// 必须不以 BOM 开头
+	if len(data) >= 3 && data[0] == 0xEF && data[1] == 0xBB && data[2] == 0xBF {
+		t.Errorf("compile-run.bat 不应包含 UTF-8 BOM（会导致 cmd.exe 首行命令损坏）")
+	}
+	// 必须以 @echo off 开头
+	if string(data[:len("@echo off")]) != "@echo off" {
+		t.Errorf("首行应以 @echo off 开头，实际前 %d 字节: %q", len("@echo off"), string(data[:12]))
+	}
+	// 必须用 CRLF 换行
+	if !contains(data, []byte("\r\n")) {
+		t.Errorf("compile-run.bat 应使用 CRLF 换行")
+	}
+	// java 调用应含 UTF-8 编码参数（保证 POC 中文输出正确）
+	if !contains(data, []byte("-Dstdout.encoding=UTF-8")) {
+		t.Errorf("compile-run.bat 的 java 调用应含 -Dstdout.encoding=UTF-8")
+	}
+}
+
+func contains(hay, needle []byte) bool {
+	return bytesIndex(hay, needle) >= 0
+}
+
+func bytesIndex(hay, needle []byte) int {
+nloop:
+	for i := 0; i+len(needle) <= len(hay); i++ {
+		for j := 0; j < len(needle); j++ {
+			if hay[i+j] != needle[j] {
+				continue nloop
+			}
+		}
+		return i
+	}
+	return -1
 }

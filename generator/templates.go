@@ -152,12 +152,13 @@ while IFS= read -r f; do
 done < <(find lib -name '*.jar' | sort)
 
 echo "[*] 运行 ctf.poc.Poc ..."
-java -cp "$CP" ctf.poc.Poc
+java -Dfile.encoding=UTF-8 -Dstdout.encoding=UTF-8 -cp "$CP" ctf.poc.Poc
 `
 
 // CompileRunBAT 是 Windows 一键编译运行脚本（对应 Python 的 COMPILE_RUN_BAT）。
-// 逐字复刻，含 chcp 65001、for 循环 classpath 构造。
-// 写入时由 writeBat 加 UTF-8 BOM + CRLF。
+// 含 chcp 65001（让 .bat 自身中文 echo 在 GBK 控制台正确显示）、for 循环 classpath 构造、
+// -Dfile.encoding=UTF-8（让 POC 的 System.out 中文在 UTF-8 控制台正确显示）。
+// 写入时由 WriteBat 以 UTF-8（无 BOM）+ CRLF 落盘（无 BOM 才不会污染首行命令）。
 const CompileRunBAT = `@echo off
 chcp 65001 > nul
 REM 一键编译并运行 POC（Windows）
@@ -179,7 +180,7 @@ for %%f in (lib\*.jar) do (
 )
 
 echo [*] 运行 ctf.poc.Poc ...
-java -cp "%CP%" ctf.poc.Poc
+java -Dfile.encoding=UTF-8 -Dstdout.encoding=UTF-8 -cp "%CP%" ctf.poc.Poc
 endlocal
 `
 

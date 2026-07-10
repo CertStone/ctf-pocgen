@@ -12,7 +12,7 @@
 - **多类型自动识别**：Spring Boot fat jar / Spring Boot WAR / 普通 WAR / 普通 Maven JAR / EAR，自动路由到对应处理逻辑
 - **零污染**：全部依赖使用 `<scope>system</scope>` + 项目内 `lib/` 目录，**绝不写入 `~/.m2`**
 - **字节级高保真**：题目类逐字节复制到 `challenge-classes.jar`，不做反编译重编译，避免 `serialVersionUID` 漂移
-- **JDK 自动检测**：从 `MANIFEST.MF` 按优先级解析 `Build-Jdk-Spec` / `Build-Jdk` / `Created-By`，默认兜底 1.8（CTF 最常见）。能正确区分构建工具自身版本与 JDK 版本（不会被 `Created-By: Gradle 8.5` 误判为 JDK 8）
+- **JDK 自动检测**：从 `MANIFEST.MF` 按优先级解析 `Build-Jdk-Spec` / `Build-Jdk` / `Created-By`，默认兜底 1.8（CTF 最常见）。能正确区分构建工具自身版本与 JDK 版本。
 - **TUI 交互界面**：无参数启动即可在终端里浏览目录、挑选 jar、确认生成
 - **高质量模板**：自带 `Poc.java`（含 `getGadget()` / `deserialize()` 骨架与 CC1 注释）、`README.md`、跨平台一键编译运行脚本
 - **单一二进制**：Go 编写，编译后无运行时依赖，下载即用
