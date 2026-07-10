@@ -80,10 +80,13 @@ func TestGeneratePOM_NoChallengeClasses(t *testing.T) {
 	}
 }
 
-// TestWriteBat_NoBOM 回归保护：.bat 必须不含 UTF-8 BOM。
+// TestWriteBat_NoBOM 回归保护：.bat 必须不含 UTF-8 BOM，且模板为纯 ASCII。
 // BOM（EF BB BF）会被中文 Windows 的 cmd.exe 按 GBK 解码为「锘緻」拼到首行命令前，
 // 导致 `@echo off` 变成 `锘緻echo off` 而报「不是内部或外部命令」。
-// 同时验证换行为 CRLF，java 调用含 UTF-8 编码参数。
+// 此外 cmd.exe 按 OEM 代码页（中文系统 936/GBK）读取/解析 .bat 文件内容，
+// chcp 65001 只影响控制台输出、不影响 .bat 自身解析，故模板里的 REM/echo 文本
+// 必须是纯 ASCII，否则中文会被 GBK 误读导致 '锟' is not recognized 报错。
+// 同时验证换行为 CRLF，java 调用含 UTF-8 编码参数（保证 POC 中文输出正确）。
 func TestWriteBat_NoBOM(t *testing.T) {
 	dir := t.TempDir()
 	path := dir + "/compile-run.bat"
@@ -105,6 +108,13 @@ func TestWriteBat_NoBOM(t *testing.T) {
 	// 必须用 CRLF 换行
 	if !contains(data, []byte("\r\n")) {
 		t.Errorf("compile-run.bat 应使用 CRLF 换行")
+	}
+	// 模板必须为纯 ASCII（中文会导致 cmd.exe GBK 解析报错）
+	for i, b := range data {
+		if b > 0x7F {
+			t.Errorf("compile-run.bat 含非 ASCII 字节 0x%02x @ offset %d（.bat 必须 ASCII-only）", b, i)
+			break
+		}
 	}
 	// java 调用应含 UTF-8 编码参数（保证 POC 中文输出正确）
 	if !contains(data, []byte("-Dstdout.encoding=UTF-8")) {

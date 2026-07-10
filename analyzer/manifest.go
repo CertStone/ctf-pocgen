@@ -1,6 +1,6 @@
 // Package analyzer 负责分析 JAR 结构、解析 MANIFEST、识别 JDK 版本与项目类型。
 //
-// 本包是对 create-ctf-poc.py 中 Analyzer 层 + 新增类型检测的 Go 复刻。
+// 本包是对原 Python 版 create-ctf-poc.py 中 Analyzer 层 + 新增类型检测的 Go 复刻。
 // 仅依赖 Go 标准库（archive/zip、regexp、strings 等）。
 package analyzer
 

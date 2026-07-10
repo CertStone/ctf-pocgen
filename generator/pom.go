@@ -122,7 +122,7 @@ const pomTemplate = `<?xml version="1.0" encoding="UTF-8"?>
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <!-- 由 create-ctf-poc.py 自动生成 -->
+    <!-- 由 ctf-pocgen 自动生成 -->
     <!-- 项目: ` + "\x00NAME\x00" + ` -->
     <!-- 编译 JDK 版本: ` + "\x00JDK\x00" + ` -->
     ` + "\x00COMMENTS\x00" + `

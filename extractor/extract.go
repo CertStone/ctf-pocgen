@@ -1,6 +1,6 @@
 // Package extractor 负责从源 jar 中提取题目类与第三方依赖。
 //
-// 对应 Python create-ctf-poc.py 的 Extractor 层：
+// 对应原 Python 版 create-ctf-poc.py 的 Extractor 层：
 //   - ExtractClasses: 把指定前缀下的全部条目重新打包为一个 jar（challenge-classes.jar）
 //   - ExtractLibJars: 把指定前缀下的 *.jar 复制到目标目录
 package extractor

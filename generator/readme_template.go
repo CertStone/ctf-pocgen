@@ -4,7 +4,7 @@ package generator
 // 用 \x00...\x00 作占位符，避免与 markdown 的反引号代码块和 ${...} 字面量冲突。
 const readmeTemplate = "# " + "\x00NAME\x00" + ` — CTF 反序列化 POC 项目
 
-> 由 ` + "`create-ctf-poc.py`" + ` 自动生成 · ` + "\x00TS\x00" + `
+> 由 ` + "`ctf-pocgen`" + ` 自动生成 · ` + "\x00TS\x00" + `
 
 ## 项目简介
 
@@ -120,6 +120,6 @@ compile-run.bat
 ## 重新生成
 
 ` + "```bash" + `
-python3 create-ctf-poc.py ` + "\x00JAR\x00" + ` ` + "\x00NAME\x00" + `
+ctf-pocgen ` + "\x00JAR\x00" + ` ` + "\x00NAME\x00" + `
 ` + "```" + `
 `
