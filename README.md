@@ -12,7 +12,7 @@
 - **多类型自动识别**：Spring Boot fat jar / Spring Boot WAR / 普通 WAR / 普通 Maven JAR / EAR，自动路由到对应处理逻辑
 - **零污染**：全部依赖使用 `<scope>system</scope>` + 项目内 `lib/` 目录，**绝不写入 `~/.m2`**
 - **字节级高保真**：题目类逐字节复制到 `challenge-classes.jar`，不做反编译重编译，避免 `serialVersionUID` 漂移
-- **JDK 自动检测**：从 `MANIFEST.MF` 按优先级解析 `Build-Jdk-Spec` / `Build-Jdk` / `Created-By`，默认兜底 1.8（CTF 最常见）
+- **JDK 自动检测**：从 `MANIFEST.MF` 按优先级解析 `Build-Jdk-Spec` / `Build-Jdk` / `Created-By`，默认兜底 1.8（CTF 最常见）。能正确区分构建工具自身版本与 JDK 版本（不会被 `Created-By: Gradle 8.5` 误判为 JDK 8）
 - **TUI 交互界面**：无参数启动即可在终端里浏览目录、挑选 jar、确认生成
 - **高质量模板**：自带 `Poc.java`（含 `getGadget()` / `deserialize()` 骨架与 CC1 注释）、`README.md`、跨平台一键编译运行脚本
 - **单一二进制**：Go 编写，编译后无运行时依赖，下载即用
@@ -118,6 +118,28 @@ compile-run.bat         # Windows
 | EAR | `META-INF/application.xml` | 提示为容器格式，建议拆出内部模块单独处理 |
 
 Spring Boot 3.2+ 的 `org.springframework.boot.loader.launch.*` 迁移路径也已正确识别。
+
+### 构建工具兼容性
+
+无论题目 jar 是 Maven、Gradle 还是 IntelliJ IDEA Artifacts 打包的，都能正确处理 —— 识别与处理基于归档结构与 `MANIFEST.MF` 字段，不依赖任何构建工具专属元数据。
+
+| 构建工具 | 典型产物 | 处理 |
+|---|---|---|
+| Maven（assembly / shade / spring-boot） | `jar-with-dependencies`、fat jar、war | ✅ |
+| Gradle（shadow / `bootJar` / `war`） | `-all.jar`、Spring Boot fat jar、war | ✅ |
+| IntelliJ IDEA Artifacts | 手动配置的 jar | ✅ |
+
+其中 Gradle shadow / Maven assembly / Maven Shade / IntelliJ 的 fat jar 都是把依赖**解包合并**到同一 jar（无嵌套 jar），会被识别为「普通 JAR」并整体作为 `challenge-classes` 引入，**所有类（题目类 + 第三方库类）都能正确导入**。Spring Boot 的 Maven 与 Gradle 产物结构完全一致（`BOOT-INF/classes` + `BOOT-INF/lib`），统一按 fat jar 处理。
+
+### ⚠️ JDK 检测的局限
+
+JDK 版本从 `MANIFEST.MF` 自动解析，但**不同构建工具写入的元数据详略不同**：
+
+- **Maven**：自动写 `Build-Jdk-Spec` / `Build-Jdk` → 能可靠解析 ✅
+- **Gradle**：默认 `jar` 任务**不写** `Build-Jdk`（仅 `Created-By: Gradle X.Y`），JDK 检测会兜底到 1.8
+- **IntelliJ Artifacts**：manifest 极简，通常**无任何构建元数据** → 兜底 1.8
+
+CTF 场景下兜底 1.8 多数正确；若题目实际是 17/21（如 Gradle/IntelliJ 打的较新项目），用 `--force-jdk` 覆盖即可。工具已正确区分构建工具自身版本与 JDK 版本，不会被 `Gradle 8.5` 之类的版本号误判。
 
 ## ⚠️ 关于 IDEA 运行 JDK
 

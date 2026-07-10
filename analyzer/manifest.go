@@ -60,6 +60,42 @@ func NormalizeJDKVersion(raw string) string {
 	return ""
 }
 
+// createdByToolRe 匹配 Created-By 里构建工具自身的标识及其版本号，
+// 用于剔除工具版本（如 "Gradle 8.5" 中的 8.5、"Maven Jar Plugin 3.2.0" 中的 3.2.0），
+// 避免 Gradle 8.5 被误读为 JDK 8。
+//
+// 覆盖的常见 Created-By 形态（来自真实 manifest 与官方文档）：
+//   - "Gradle 8.5"
+//   - "Maven Jar Plugin 3.2.0"
+//   - "Apache Maven 3.8.1"
+//   - "Maven Archiver 3.6.0"
+//   - "Ant 1.10.12"
+//   - "Gradle 8.10.2"
+//
+// 匹配 "工具名 + 可选空格 + 版本号"，把它们整段移除，剩下的（如 "(1.8.0_292)"、"(Java 11)"）
+// 才是真正的 JDK 信号。
+var createdByToolRe = regexp.MustCompile(`(?i)(gradle|maven|archiver|ant|ivy|sbt)\s*\d+(?:[._]\d+)*`)
+
+// NormalizeCreatedByJDK 专门解析 Created-By 字段中的 JDK 版本。
+//
+// 与通用的 NormalizeJDKVersion 的区别：先剔除构建工具自身的版本号
+// （这是 Created-By 特有的陷阱），再在剩余文本中寻找 JDK 版本。
+//
+// 例：
+//
+//	"Gradle 8.5"                       -> "" （无 JDK 信号）
+//	"Maven Jar Plugin 3.2.0 (1.8.0_292)" -> "1.8"
+//	"Apache Maven 3.8.1 (Java 11)"     -> "11"
+//	"Ant 1.10.12"                      -> ""
+func NormalizeCreatedByJDK(createdBy string) string {
+	if strings.TrimSpace(createdBy) == "" {
+		return ""
+	}
+	// 先剔除工具名 + 版本号
+	cleaned := createdByToolRe.ReplaceAllString(createdBy, " ")
+	return NormalizeJDKVersion(cleaned)
+}
+
 // JDKDetail 记录 JDK 版本检测的来源信息（对应 Python 返回的 detail dict）。
 type JDKDetail struct {
 	// Build-Jdk-Spec / Build-Jdk / Created-By 的原始值（可能为空）。
@@ -126,7 +162,7 @@ func DetectJDKFromManifest(manifestText, forceJDK string) (string, JDKDetail) {
 	if v := NormalizeJDKVersion(d.BuildJdk); v != "" {
 		return v, d
 	}
-	if v := NormalizeJDKVersion(d.CreatedBy); v != "" {
+	if v := NormalizeCreatedByJDK(d.CreatedBy); v != "" {
 		return v, d
 	}
 	d.Default = "1.8"
