@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test & Vet
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Verify formatting
+        run: |
+          # gofmt -l 输出非空即表示有未格式化文件
+          out=$(gofmt -l .)
+          if [ -n "$out" ]; then
+            echo "::error::以下文件未用 gofmt 格式化:"
+            echo "$out"
+            exit 1
+          fi
+
+      - name: Build
+        run: go build ./...
+
+      - name: Test
+        run: go test -v ./...

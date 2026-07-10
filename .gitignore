@@ -1,0 +1,24 @@
+# 二进制构建产物
+/ctf-pocgen
+/ctf-pocgen.exe
+*.exe
+*.test
+*.out
+
+# Go 工作目录
+/vendor/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+
+# 操作系统
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 生成的 POC 输出目录（开发时本地测试用，不入库）
+poc-*/
+output/
