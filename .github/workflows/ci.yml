@@ -1,17 +1,20 @@
 name: CI
 
+# main 分支的每次 commit / PR 合并都触发：
+#   1) 质量检查（vet / 格式 / 测试）
+#   2) 多架构构建（调用 build.yml），二进制作为 workflow artifact 留存
 on:
   push:
-    branches: [main, master]
+    branches: [main]
   pull_request:
-    branches: [main, master]
+    branches: [main]
 
 permissions:
   contents: read
 
 jobs:
-  test:
-    name: Test & Vet
+  check:
+    name: Vet & Test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -39,8 +42,10 @@ jobs:
             exit 1
           fi
 
-      - name: Build
-        run: go build ./...
-
       - name: Test
         run: go test -v ./...
+
+  build:
+    name: Build (multi-arch)
+    needs: check
+    uses: ./.github/workflows/build.yml

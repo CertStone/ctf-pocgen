@@ -1,54 +1,20 @@
 name: Release
 
-# 打 tag（如 v1.0.0）时触发：多架构交叉编译，并把二进制附到 GitHub Release。
+# 打 tag（如 v1.0.0）时触发：多架构构建并把二进制附到 GitHub Release。
+# 二进制构建逻辑复用 build.yml，保证与 CI 产出一致。
 on:
   push:
     tags:
       - 'v*'
-  workflow_dispatch: {} # 允许手动触发（便于测试构建，不发布）
+  workflow_dispatch: {} # 允许手动触发（仅构建，不发布）
 
 permissions:
   contents: write # 发布 Release 需要
 
 jobs:
   build:
-    name: Build ${{ matrix.goos }}/${{ matrix.goarch }}
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        # 笛卡尔积：3 系统 × 2 架构 = 6 个目标
-        goos: [linux, darwin, windows]
-        goarch: [amd64, arm64]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version-file: go.mod
-          cache: true
-
-      - name: Build binary
-        env:
-          CGO_ENABLED: '0' # 纯 Go 交叉编译，无需 C 工具链
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
-        run: |
-          mkdir -p dist
-          ext=""
-          if [ "${GOOS}" = "windows" ]; then ext=".exe"; fi
-          out="dist/ctf-pocgen-${GOOS}-${GOARCH}${ext}"
-          go build -trimpath -ldflags="-s -w" -o "$out" .
-          echo "构建产物: $out"
-          ls -lh "$out"
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ctf-pocgen-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: dist/*
+    name: Build (multi-arch)
+    uses: ./.github/workflows/build.yml
 
   release:
     name: Publish Release
