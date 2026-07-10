@@ -40,8 +40,11 @@ func makeFatJar(t *testing.T, path string) {
 	zw.Close()
 }
 
-// 验证当前 PlainJarHandler 对 jar-with-dependencies 的实际产物。
-func TestCurrentBehavior_JarWithDeps(t *testing.T) {
+// 验证 PlainJarHandler 对 jar-with-dependencies 的产物：
+// jar-with-dependencies（Maven assembly / Gradle shadow / IntelliJ Artifacts）
+// 把依赖解包合并进同一 jar，故整个 jar 作为 challenge-classes 引入，
+// 题目类与第三方类全部在 classpath 上可用（这是设计行为，非缺陷）。
+func TestPlainJarHandler_JarWithDeps(t *testing.T) {
 	dir := t.TempDir()
 	jarPath := filepath.Join(dir, "mything-1.0-jar-with-dependencies.jar")
 	makeFatJar(t, jarPath)
@@ -52,31 +55,46 @@ func TestCurrentBehavior_JarWithDeps(t *testing.T) {
 		t.Fatalf("Handle: %v", err)
 	}
 
-	// 当前行为：整个 jar 被复制为 challenge-classes.jar
+	// 整个 jar 被复制为 challenge-classes.jar（逐字节一致）
 	cc := filepath.Join(projectDir, "lib", "challenge-classes.jar")
 	data, err := os.ReadFile(cc)
 	if err != nil {
 		t.Fatalf("challenge-classes.jar 应存在: %v", err)
 	}
-	// 该 jar 应是源 jar 的逐字节副本
 	orig, _ := os.ReadFile(jarPath)
 	if string(orig) != string(data) {
-		t.Error("当前实现：challenge-classes.jar 应为源 jar 的完整副本")
+		t.Error("challenge-classes.jar 应为源 jar 的完整副本")
 	}
 
-	// 问题点：题目类和第三方类混在一起，pom 里没有第三方依赖条目
+	// pom 里只有 ctf.challenge 依赖（无独立 ctf.lib，因为依赖已合并进同一 jar）
 	pom, _ := os.ReadFile(filepath.Join(projectDir, "pom.xml"))
-	if strings.Contains(string(pom), "ctf.lib") {
-		t.Error("当前实现不应有 ctf.lib 依赖（这正是问题所在）")
+	if !strings.Contains(string(pom), "ctf.challenge") {
+		t.Error("pom 应含 ctf.challenge 依赖")
 	}
-	// 记录现状（仅用于说明，不是断言失败）
-	zr, _ := zip.OpenReader(cc)
-	mixed := 0
+	if strings.Contains(string(pom), "ctf.lib") {
+		t.Error("jar-with-dependencies 的 pom 不应有独立 ctf.lib 依赖")
+	}
+
+	// challenge-classes.jar 应同时包含题目类与第三方类（都在 classpath 上）
+	zr, err := zip.OpenReader(cc)
+	if err != nil {
+		t.Fatalf("打开 cc.jar: %v", err)
+	}
+	hasProject := false
+	hasThirdParty := false
 	for _, f := range zr.File {
-		if strings.HasPrefix(f.Name, "org/apache/commons/") || strings.HasPrefix(f.Name, "com/mycompany/") {
-			mixed++
+		if strings.HasPrefix(f.Name, "com/mycompany/") {
+			hasProject = true
+		}
+		if strings.HasPrefix(f.Name, "org/apache/commons/") {
+			hasThirdParty = true
 		}
 	}
 	zr.Close()
-	t.Logf("当前产物：challenge-classes.jar 含 %d 个混合条目（题目类+第三方类混在一起），pom 无第三方依赖列表", mixed)
+	if !hasProject {
+		t.Error("challenge-classes.jar 应包含题目类 (com/mycompany/)")
+	}
+	if !hasThirdParty {
+		t.Error("challenge-classes.jar 应包含合并进来的第三方类 (org/apache/commons/)")
+	}
 }

@@ -6,6 +6,7 @@ package tui
 
 import (
 	"path/filepath"
+	"strconv"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -135,8 +136,7 @@ func (m Model) updateBrowse(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) updateConfirmFile(msg tea.Msg) (tea.Model, tea.Cmd) {
-	k, ok := msg.(tea.KeyMsg)
-	if !ok {
+	if _, ok := msg.(tea.KeyMsg); !ok {
 		return m, nil
 	}
 	cm, _ := m.confirm.Update(msg)
@@ -166,8 +166,6 @@ func (m Model) updateConfirmFile(msg tea.Msg) (tea.Model, tea.Cmd) {
 	})
 	m.confirm = newConfirm("还有其他文件要处理吗？", false)
 	m.state = stateConfirmMore
-	_ = ok
-	_ = k
 	return m, nil
 }
 
@@ -226,22 +224,8 @@ func header(name string) string {
 func summaryOf(sel []Selection) string {
 	out := "已选择以下文件待处理：\n"
 	for i, s := range sel {
-		out += "  " + itoaIdx(i+1) + ". " + filepath.Base(s.JarPath)
+		out += "  " + strconv.Itoa(i+1) + ". " + filepath.Base(s.JarPath)
 		out += "  →  " + s.OutputDir + "\n"
 	}
 	return out
-}
-
-func itoaIdx(n int) string {
-	if n == 0 {
-		return "0"
-	}
-	var buf [20]byte
-	i := len(buf)
-	for n > 0 {
-		i--
-		buf[i] = byte('0' + n%10)
-		n /= 10
-	}
-	return string(buf[i:])
 }

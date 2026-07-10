@@ -4,10 +4,10 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -109,10 +109,9 @@ func isSupported(name string) bool {
 
 func formatSize(n int64) string {
 	const (
-		_  = iota
-		KB = 1 << (10 * iota)
-		MB
-		GB
+		KB = 1 << 10
+		MB = 1 << 20
+		GB = 1 << 30
 	)
 	switch {
 	case n >= GB:
@@ -126,51 +125,15 @@ func formatSize(n int64) string {
 	}
 }
 
+// formatFloat 格式化为最多两位小数（去掉多余的 0 和小数点）。
 func formatFloat(f float64) string {
-	s := strings.TrimSuffix(strings.TrimRight(
-		strings.TrimRight(formatDecimal(f), "0"), "."), "")
-	if s == "" {
-		s = "0"
+	s := strconv.FormatFloat(f, 'f', 2, 64)
+	// 去掉末尾多余的 0 和小数点：12.50 -> 12.5, 12.00 -> 12
+	if i := strings.IndexByte(s, '.'); i >= 0 {
+		s = strings.TrimRight(s, "0")
+		s = strings.TrimRight(s, ".")
 	}
 	return s
-}
-
-// formatDecimal 简单格式化到两位小数（避免引入 strconv 到视图层）。
-func formatDecimal(f float64) string {
-	// 保留两位小数
-	whole := int64(f)
-	frac := int64((f - float64(whole)) * 100)
-	if frac < 0 {
-		frac = -frac
-	}
-	ws := itoa64(whole)
-	fs := itoa64(frac)
-	if len(fs) < 2 {
-		fs = "0" + fs
-	}
-	return ws + "." + fs
-}
-
-func itoa64(n int64) string {
-	if n == 0 {
-		return "0"
-	}
-	var buf [20]byte
-	i := len(buf)
-	neg := n < 0
-	if neg {
-		n = -n
-	}
-	for n > 0 {
-		i--
-		buf[i] = byte('0' + n%10)
-		n /= 10
-	}
-	if neg {
-		i--
-		buf[i] = '-'
-	}
-	return string(buf[i:])
 }
 
 // rebuildList 重建 list 的 items（用于进入子目录后刷新）。
@@ -180,6 +143,3 @@ func rebuildList(m *list.Model, dir, root string) {
 	m.Title = "浏览目录: " + dir
 	m.Select(0)
 }
-
-// 重新导出 KeyMsg 以便其他文件使用（避免重复 import）。
-var _ tea.KeyMsg = tea.KeyMsg{}

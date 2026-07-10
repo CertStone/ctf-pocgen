@@ -6,7 +6,6 @@ package analyzer
 
 import (
 	"archive/zip"
-	"fmt"
 	"io"
 	"regexp"
 	"strings"
@@ -257,5 +256,3 @@ func ManifestHeader(manifestText, key string) string {
 	}
 	return ""
 }
-
-var _ = fmt.Sprintf // 保留以便后续可能的格式化（防止 import 报错）

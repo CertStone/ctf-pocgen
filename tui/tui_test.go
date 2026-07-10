@@ -3,6 +3,7 @@ package tui
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/charmbracelet/bubbles/list"
@@ -24,16 +25,16 @@ func TestBuildBrowserItems(t *testing.T) {
 	for _, it := range items {
 		names = append(names, it.(fsItem).name)
 	}
-	if !contains(names, "a.jar") {
+	if !slices.Contains(names, "a.jar") {
 		t.Errorf("应包含 a.jar, got %v", names)
 	}
-	if !contains(names, "sub/") {
+	if !slices.Contains(names, "sub/") {
 		t.Errorf("应包含 sub/, got %v", names)
 	}
-	if contains(names, "b.txt") {
+	if slices.Contains(names, "b.txt") {
 		t.Errorf("不应包含普通文件 b.txt, got %v", names)
 	}
-	if contains(names, ".hidden.jar") {
+	if slices.Contains(names, ".hidden.jar") {
 		t.Errorf("不应包含隐藏文件, got %v", names)
 	}
 }
@@ -56,15 +57,15 @@ func TestBuildBrowserItems_ParentUp(t *testing.T) {
 func TestConfirmStateTransitions(t *testing.T) {
 	m := newConfirm("test?", true) // 默认 Yes
 	// Enter 确认默认 Yes
-	m2, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("enter")})
+	m2, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	if !m2.done || !m2.accepted {
 		t.Errorf("默认 Yes 时 Enter 应 accepted=true")
 	}
 
 	// 切到 No 后确认
 	m = newConfirm("test?", true)
-	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("right")})
-	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("enter")})
+	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyRight})
+	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	if !m.done || m.accepted {
 		t.Errorf("切到 No 后 Enter 应 accepted=false")
 	}
@@ -86,11 +87,11 @@ func TestLocationChoice(t *testing.T) {
 	if m.Chosen() != "/a" {
 		t.Errorf("默认应选第一项 /a, got %s", m.Chosen())
 	}
-	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("right")})
+	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyRight})
 	if m.Chosen() != "/b" {
 		t.Errorf("切换后应选 /b, got %s", m.Chosen())
 	}
-	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("down")})
+	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyDown})
 	if m.Chosen() != "/a" {
 		t.Errorf("再切回应选 /a, got %s", m.Chosen())
 	}
@@ -117,20 +118,20 @@ func TestStateMachine_FullFlow(t *testing.T) {
 	}
 
 	// Enter 选中文件 → 进入确认状态
-	m2, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("enter")})
+	m2, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	m = m2.(Model)
 	if m.state != stateConfirmFile {
 		t.Fatalf("应进入 stateConfirmFile, got %d", m.state)
 	}
 	// 确认 Yes（默认 Yes，直接 Enter）
-	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("enter")})
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	m = m2.(Model)
 	// 文件在 root（同目录），应直接进入 stateConfirmMore
 	if m.state != stateConfirmMore {
 		t.Fatalf("同目录应进入 stateConfirmMore, got %d", m.state)
 	}
 	// 确认更多 = No（默认 No，直接 Enter）→ 结束
-	m2, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("enter")})
+	m2, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	m = m2.(Model)
 	if m.state != stateDone {
 		t.Fatalf("应进入 stateDone, got %d", m.state)
@@ -154,15 +155,6 @@ func TestStateMachine_FullFlow(t *testing.T) {
 func hasFileItem(l list.Model) bool {
 	for _, it := range l.Items() {
 		if fi, ok := it.(fsItem); ok && fi.kind == kindFile {
-			return true
-		}
-	}
-	return false
-}
-
-func contains(s []string, v string) bool {
-	for _, x := range s {
-		if x == v {
 			return true
 		}
 	}

@@ -7,7 +7,6 @@ package extractor
 
 import (
 	"archive/zip"
-	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -28,10 +27,10 @@ const copyChunkSize = 1 << 20 // 1 MiB
 //
 // classesPrefix 用于从每个条目名剥离前缀。
 // 返回写入的条目数。
-func ExtractClasses(jarPath string, classesEntries []string, classesPrefix, outJarPath string) (int, error) {
-	// 确保父目录存在（对应 Python os.makedirs(dirname, exist_ok=True)）
+func ExtractClasses(jarPath string, classesEntries []string, classesPrefix, outJarPath string) (n int, err error) {
+	// 确保父目录存在
 	if dir := filepath.Dir(outJarPath); dir != "" {
-		if err := os.MkdirAll(dir, 0o755); err != nil {
+		if err = os.MkdirAll(dir, 0o755); err != nil {
 			return 0, err
 		}
 	}
@@ -46,19 +45,29 @@ func ExtractClasses(jarPath string, classesEntries []string, classesPrefix, outJ
 	if err != nil {
 		return 0, err
 	}
-	defer out.Close()
+	// zip.Writer.Close() 会写中央目录并 flush，是产物完整性的关键步骤，
+	// 错误（如磁盘满）必须返回，不能被 defer 吞掉。
+	defer func() {
+		cerr := out.Close()
+		if err == nil {
+			err = cerr
+		}
+	}()
 
 	zw := zip.NewWriter(out)
-	defer zw.Close()
+	defer func() {
+		cerr := zw.Close()
+		if err == nil {
+			err = cerr
+		}
+	}()
 
 	// 建立条目名 -> *zip.File 的索引，便于按 classesEntries 顺序读取。
-	// 注意 classesEntries 来自分析结果，顺序与 Python 一致（即 zip 中央目录顺序）。
 	index := make(map[string]*zip.File, len(r.File))
 	for _, f := range r.File {
 		index[f.Name] = f
 	}
 
-	written := 0
 	for _, entry := range classesEntries {
 		f, ok := index[entry]
 		if !ok {
@@ -69,32 +78,32 @@ func ExtractClasses(jarPath string, classesEntries []string, classesPrefix, outJ
 			continue
 		}
 
-		// 读取原始解压字节（对应 Python zin.read(entry)）
-		rc, err := f.Open()
-		if err != nil {
-			return written, err
+		// 读取原始解压字节
+		rc, oerr := f.Open()
+		if oerr != nil {
+			return n, oerr
 		}
-		data, err := io.ReadAll(rc)
+		data, rerr := io.ReadAll(rc)
 		rc.Close()
-		if err != nil {
-			return written, err
+		if rerr != nil {
+			return n, rerr
 		}
 
 		// 构造新的 FileHeader，复制时间戳与 external_attr，强制 Deflate。
 		fh := f.FileHeader
 		fh.Name = inner
-		fh.Method = zip.Deflate // 对应 Python new_zi.compress_type = ZIP_DEFLATED
+		fh.Method = zip.Deflate
 
-		w, err := zw.CreateHeader(&fh)
-		if err != nil {
-			return written, err
+		w, werr := zw.CreateHeader(&fh)
+		if werr != nil {
+			return n, werr
 		}
-		if _, err := w.Write(data); err != nil {
-			return written, err
+		if _, werr = w.Write(data); werr != nil {
+			return n, werr
 		}
-		written++
+		n++
 	}
-	return written, nil
+	return n, nil
 }
 
 // ExtractLibJars 把源 jar 中 libEntries 列出的 jar 条目复制到 libDir，
@@ -186,6 +195,3 @@ func copyZipEntryToFile(f *zip.File, dstPath string) error {
 	_, err = io.CopyBuffer(out, rc, make([]byte, copyChunkSize))
 	return err
 }
-
-// ErrUnsupported 占位，用于将来可能的错误扩展。
-var ErrUnsupported = errors.New("unsupported archive type")

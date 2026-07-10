@@ -128,13 +128,13 @@ func runCLI(args []string) {
 
 	// 解析为绝对路径
 	jarPath, _ = filepath.Abs(jarPath)
-	projectName = pipeline.ResolveProjectName(jarPath, projectName)
-	projectDir, _ := filepath.Abs(projectName)
 
-	// 校验输入文件存在
+	// 先校验输入文件存在，再解析项目名（避免短文件名触发越界）
 	if _, err := os.Stat(jarPath); err != nil {
 		die("文件不存在：%s", jarPath)
 	}
+	projectName = pipeline.ResolveProjectName(jarPath, projectName)
+	projectDir, _ := filepath.Abs(projectName)
 
 	// 处理目录已存在
 	if _, err := os.Stat(projectDir); err == nil {

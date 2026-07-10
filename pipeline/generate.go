@@ -14,11 +14,9 @@ import (
 	"ctf-pocgen/handlers"
 )
 
-// Options 对应 CLI flags（与 handlers.Options 字段一致，但独立以避免循环依赖）。
-type Options struct {
-	ForceJDK        string
-	ExcludePatterns []string
-}
+// Options 是 handlers.Options 的类型别名，CLI 与 TUI 通过它向 pipeline 传递选项。
+// 直接复用 handlers.Options 避免两份重复定义（pipeline 依赖 handlers，无循环依赖）。
+type Options = handlers.Options
 
 // Result 描述一次生成的结果，供调用方（CLI/TUI）做后续提示。
 type Result struct {
@@ -66,8 +64,7 @@ func Run(jarPath, projectDir, projectName string, opts Options, log bool) (*Resu
 	t := analyzer.DetectType(names, manifest)
 	l.info("检测到类型：%s", t)
 
-	// 3) 路由到对应 handler
-	hOpts := handlers.Options{ForceJDK: opts.ForceJDK, ExcludePatterns: opts.ExcludePatterns}
+	// 3) 路由到对应 handler（opts 已是 handlers.Options 类型，直接传递）
 	var h handlers.Handler
 	switch t {
 	case analyzer.TypeSpringBootJar:
@@ -92,23 +89,26 @@ func Run(jarPath, projectDir, projectName string, opts Options, log bool) (*Resu
 	if err := os.MkdirAll(projectDir, 0o755); err != nil {
 		return nil, fmt.Errorf("创建项目目录失败: %w", err)
 	}
-	if err := h.Handle(jarPath, projectDir, projectName, hOpts); err != nil {
+	if err := h.Handle(jarPath, projectDir, projectName, opts); err != nil {
 		return nil, err
 	}
 
 	return &Result{ProjectDir: projectDir, Type: t, TypeName: t.String()}, nil
 }
 
-// ResolveProjectName 按 Python 规则解析默认项目名：poc-{jar名去.jar}。
+// ResolveProjectName 解析默认项目名：poc-{jar名去后缀}。
+// 支持 .jar/.war/.ear 后缀剥离（大小写不敏感），短文件名不会 panic。
 func ResolveProjectName(jarPath, projectName string) string {
 	if projectName != "" {
 		return projectName
 	}
 	base := filepath.Base(jarPath)
-	if strings.EqualFold(base[len(base)-4:], ".jar") {
-		base = base[:len(base)-4]
-	} else if strings.HasSuffix(strings.ToLower(base), ".war") {
-		base = base[:len(base)-4]
+	lower := strings.ToLower(base)
+	for _, ext := range []string{".jar", ".war", ".ear"} {
+		if strings.HasSuffix(lower, ext) {
+			base = base[:len(base)-len(ext)]
+			break
+		}
 	}
 	return "poc-" + base
 }

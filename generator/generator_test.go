@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"bytes"
 	"os"
 	"strings"
 	"testing"
@@ -106,7 +107,7 @@ func TestWriteBat_NoBOM(t *testing.T) {
 		t.Errorf("首行应以 @echo off 开头，实际前 %d 字节: %q", len("@echo off"), string(data[:12]))
 	}
 	// 必须用 CRLF 换行
-	if !contains(data, []byte("\r\n")) {
+	if !bytes.Contains(data, []byte("\r\n")) {
 		t.Errorf("compile-run.bat 应使用 CRLF 换行")
 	}
 	// 模板必须为纯 ASCII（中文会导致 cmd.exe GBK 解析报错）
@@ -117,24 +118,7 @@ func TestWriteBat_NoBOM(t *testing.T) {
 		}
 	}
 	// java 调用应含 UTF-8 编码参数（保证 POC 中文输出正确）
-	if !contains(data, []byte("-Dstdout.encoding=UTF-8")) {
+	if !bytes.Contains(data, []byte("-Dstdout.encoding=UTF-8")) {
 		t.Errorf("compile-run.bat 的 java 调用应含 -Dstdout.encoding=UTF-8")
 	}
-}
-
-func contains(hay, needle []byte) bool {
-	return bytesIndex(hay, needle) >= 0
-}
-
-func bytesIndex(hay, needle []byte) int {
-nloop:
-	for i := 0; i+len(needle) <= len(hay); i++ {
-		for j := 0; j < len(needle); j++ {
-			if hay[i+j] != needle[j] {
-				continue nloop
-			}
-		}
-		return i
-	}
-	return -1
 }

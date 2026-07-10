@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"strconv"
 	"strings"
 	"time"
 
@@ -82,8 +83,8 @@ func GenerateReadme(p READMEParams) string {
 		"\x00TS\x00", tsStr,
 		"\x00JAR\x00", p.JarPath,
 		"\x00JDK\x00", p.JDKVersion,
-		"\x00CC_CNT\x00", itoa(p.ClassesCount),
-		"\x00LIB_CNT\x00", itoa(len(p.LibJars)),
+		"\x00CC_CNT\x00", strconv.Itoa(p.ClassesCount),
+		"\x00LIB_CNT\x00", strconv.Itoa(len(p.LibJars)),
 		"\x00META\x00", metaBlock,
 		"\x00DETAIL\x00", detailBlock,
 		"\x00CCF\x00", ccf,
@@ -91,27 +92,4 @@ func GenerateReadme(p READMEParams) string {
 		"\x00JDK_LV\x00", jdkLv,
 	)
 	return replacer.Replace(readmeTemplate)
-}
-
-// itoa 简单整数转字符串（避免引入 strconv 到模板层的语义歧义）。
-func itoa(n int) string {
-	if n == 0 {
-		return "0"
-	}
-	neg := n < 0
-	if neg {
-		n = -n
-	}
-	var buf [20]byte
-	i := len(buf)
-	for n > 0 {
-		i--
-		buf[i] = byte('0' + n%10)
-		n /= 10
-	}
-	if neg {
-		i--
-		buf[i] = '-'
-	}
-	return string(buf[i:])
 }

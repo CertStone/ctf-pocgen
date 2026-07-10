@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -60,6 +59,3 @@ func (m confirmModel) View() string {
 	return m.prompt + "\n\n" + yesStyle.Render("Yes") + "    " + noStyle.Render("No") +
 		"\n\n" + lipgloss.NewStyle().Faint(true).Render("←/→ 切换，Enter 确认，Y/N 直选")
 }
-
-// 让 confirmModel 也作为 list.Model 的宿主以支持尺寸同步（占位实现）。
-var _ list.Model = list.Model{}

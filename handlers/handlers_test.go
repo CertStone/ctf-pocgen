@@ -4,9 +4,9 @@ import (
 	"archive/zip"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
-	"ctf-pocgen/analyzer"
 	"ctf-pocgen/handlers"
 )
 
@@ -148,15 +148,13 @@ func TestPlainJarHandler(t *testing.T) {
 	}
 	// pom 应只有 ctf.challenge 一个依赖（无第三方 lib）
 	pom, _ := os.ReadFile(filepath.Join(projectDir, "pom.xml"))
-	if !contains(string(pom), "ctf.challenge") {
+	if !strings.Contains(string(pom), "ctf.challenge") {
 		t.Error("pom 应含 ctf.challenge 依赖")
 	}
-	if contains(string(pom), "ctf.lib") {
+	if strings.Contains(string(pom), "ctf.lib") {
 		t.Error("普通 jar 的 pom 不应有 ctf.lib 依赖")
 	}
 }
-
-// TestExcludePatterns 验证 --exclude-jars 在 handler 层生效。
 func TestExcludePatterns(t *testing.T) {
 	dir := t.TempDir()
 	jarPath := filepath.Join(dir, "app.jar")
@@ -187,19 +185,3 @@ func mustExist(t *testing.T, path string) {
 		t.Errorf("期望文件存在但缺失: %s", path)
 	}
 }
-
-func contains(s, sub string) bool {
-	return len(s) >= len(sub) && (s == sub || indexOf(s, sub) >= 0)
-}
-
-func indexOf(s, sub string) int {
-	for i := 0; i+len(sub) <= len(s); i++ {
-		if s[i:i+len(sub)] == sub {
-			return i
-		}
-	}
-	return -1
-}
-
-// 确保被引用以防止编译器移除（analyzer 包用于 detect 联动测试）。
-var _ = analyzer.TypePlainJar
