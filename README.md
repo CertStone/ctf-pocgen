@@ -1,6 +1,9 @@
+
 # ctf-pocgen
 
-> CTF Java 反序列化 POC 项目一键生成工具 —— 从一个 Spring Boot fat jar / WAR / 普通 JAR，秒级生成可立即编译运行的零污染 Maven POC 项目。
+> 自用项目，不保证积极维护；
+
+> CTF Java 反序列化 POC 脚手架项目生成工具 —— 从一个 Spring Boot fat jar / WAR / 普通 JAR，一键生成可立即编译运行的零污染 Maven POC 项目。
 
 在 CTF Web Java 反序列化题目中，题目通常只提供一个可执行 jar。选手要手动提取 `BOOT-INF/classes` 和 `BOOT-INF/lib`、配置 Maven、对齐 JDK 版本，繁琐且易错（`serialVersionUID` 不匹配、`ClassNotFoundException` 是家常便饭）。本工具把这些全部自动化：**一条命令，生成一个可立即 `mvn compile` 的 POC 项目**。
 
