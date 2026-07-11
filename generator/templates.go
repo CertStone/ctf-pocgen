@@ -5,8 +5,8 @@
 // 用 Go 反引号原始字符串字面量保存，保证字符级一致。
 package generator
 
-// PocJavaTemplate 是反序列化 POC 模板（对应 Python 的 POC_JAVA_TEMPLATE）。
-// 逐字复刻，含完整中文注释、getGadget/deserialize/main 方法。
+// PocJavaTemplate 是反序列化 POC 模板。
+// 含完整中文注释、getGadget/deserialize/main 方法，以及反射辅助工具。
 const PocJavaTemplate = `package ctf.poc;
 
 import java.io.ByteArrayInputStream;
@@ -14,6 +14,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.Base64;
 
 /**
@@ -34,6 +38,10 @@ import java.util.Base64;
  *   3. 如果题目环境存在 SerialKiller / JEP 等反序列化过滤器，需要先绕过黑名单。
  *   4. 生成 payload 后，通常用 base64 编码后通过 HTTP/接口投递，本题可参考
  *      challenge-classes.jar 中的 Controller 寻找入口。
+ * <p>
+ * 构造 gadget 时常需要操作私有字段 / 调用私有方法 / 绕过 final，
+ * 可使用下方的反射辅助方法：{@link #setField}、{@link #getField}、
+ * {@link #invokeMethod}、{@link #newInstance}。
  */
 public class Poc {
 
@@ -77,6 +85,8 @@ public class Poc {
         return new byte[0];
     }
 
+    // ==================== 序列化 / 反序列化 ====================
+
     /**
      * 把对象序列化为字节数组。
      */
@@ -100,6 +110,87 @@ public class Poc {
         }
     }
 
+    // ==================== 反射辅助工具 ====================
+    // 构造 gadget 时常需要操作私有字段 / 调用私有方法 / 绕过 final 修饰符，
+    // 以下方法封装了 setAccessible(true) 等样板代码，直接调用即可。
+
+    /**
+     * 设置对象的字段值（含私有、final 字段）。
+     * <p>
+     * 对于 final 字段会先清除 modifier 标志位再赋值（JDK 9+ 需配合
+     * --add-opens 或反射绕过模块限制）。
+     *
+     * @param target    目标对象（静态字段传 null + 指定 declaringClass）
+     * @param fieldName 字段名
+     * @param value     要设置的值
+     * @throws Exception 反射过程中的异常
+     */
+    public static void setField(Object target, String fieldName, Object value) throws Exception {
+        Class<?> clazz = (target instanceof Class) ? (Class<?>) target : target.getClass();
+        Field field = clazz.getDeclaredField(fieldName);
+        field.setAccessible(true);
+        // 处理 final 字段：清除 FINAL 标志位
+        int mods = field.getModifiers();
+        if (Modifier.isFinal(mods)) {
+            Field modifiers = Field.class.getDeclaredField("modifiers");
+            modifiers.setAccessible(true);
+            modifiers.setInt(field, mods & ~Modifier.FINAL);
+        }
+        field.set(target, value);
+    }
+
+    /**
+     * 读取对象的字段值（含私有字段）。
+     *
+     * @param target    目标对象
+     * @param fieldName 字段名
+     * @return 字段当前值
+     * @throws Exception 反射过程中的异常
+     */
+    public static Object getField(Object target, String fieldName) throws Exception {
+        Class<?> clazz = (target instanceof Class) ? (Class<?>) target : target.getClass();
+        Field field = clazz.getDeclaredField(fieldName);
+        field.setAccessible(true);
+        return field.get(target);
+    }
+
+    /**
+     * 调用对象的私有方法。
+     *
+     * @param target        目标对象
+     * @param methodName    方法名
+     * @param paramTypes    参数类型列表
+     * @param args          参数值列表
+     * @return 方法返回值
+     * @throws Exception 反射过程中的异常
+     */
+    public static Object invokeMethod(Object target, String methodName, Class<?>[] paramTypes, Object[] args)
+            throws Exception {
+        Class<?> clazz = (target instanceof Class) ? (Class<?>) target : target.getClass();
+        Method method = clazz.getDeclaredMethod(methodName, paramTypes);
+        method.setAccessible(true);
+        return method.invoke(target, args);
+    }
+
+    /**
+     * 通过反射创建对象（含调用私有构造器）。
+     *
+     * @param declaringClass 声明该构造器的类
+     * @param paramTypes      构造器参数类型列表
+     * @param args            构造器参数值列表
+     * @return 新建实例
+     * @throws Exception 反射过程中的异常
+     */
+    @SuppressWarnings("unchecked")
+    public static <T> T newInstance(Class<T> declaringClass, Class<?>[] paramTypes, Object[] args)
+            throws Exception {
+        Constructor<?> constructor = declaringClass.getDeclaredConstructor(paramTypes);
+        constructor.setAccessible(true);
+        return (T) constructor.newInstance(args);
+    }
+
+    // ==================== 入口 ====================
+
     public static void main(String[] args) {
         try {
             // 1) 构造 payload
@@ -111,17 +202,13 @@ public class Poc {
             System.out.println("[*] payload (base64):");
             System.out.println(b64);
 
-            // 3) 本地自测反序列化（验证 gadget 触发）
-            if (payload.length > 0) {
-                System.out.println("[*] 本地反序列化测试...");
-                Object result = deserialize(payload);
-                System.out.println("[+] 反序列化完成: " + result);
-            } else {
+            if (payload.length == 0) {
                 System.out.println("[!] payload 为空，请在 getGadget() 中实现利用链");
             }
+            // 注意：不在此自动反序列化触发，避免构造完 gadget 后意外执行。
+            // 如需本地自测，手动调用 deserialize(payload) 即可。
         } catch (Exception e) {
-            // gadget 触发时通常抛异常（如执行命令返回值），属正常现象
-            System.out.println("[!] 发生异常（gadget 触发时常见）:");
+            System.out.println("[!] 发生异常:");
             e.printStackTrace();
         }
     }
