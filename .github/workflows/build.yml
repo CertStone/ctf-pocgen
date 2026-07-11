@@ -48,7 +48,7 @@ jobs:
           ls -lh "$out"
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           # 同一次构建内名称唯一；release.yml 会用 merge-multiple 汇总
           name: ctf-pocgen-${{ matrix.goos }}-${{ matrix.goarch }}
