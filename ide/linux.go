@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"syscall"
 )
 
 // toolboxScriptsDir 返回 Linux 上 Toolbox 生成脚本的默认目录。
@@ -107,10 +108,10 @@ func walkForIdeaSh(dir string) []string {
 }
 
 // launch 在 Linux 上异步启动 IDEA。
-// 用 nohup + & 的等价做法是 cmd.Start() 后立即返回（进程已 detach）。
+// 设置独立进程组（Setpgid），本进程退出后 IDEA 不受 SIGHUP 影响。
 func launch(ideaPath, projectDir string) error {
 	cmd := exec.Command(ideaPath, projectDir)
-	// 让 IDEA 独立于本进程运行
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cmd.Stdout = nil
 	cmd.Stderr = nil
 	cmd.Stdin = nil

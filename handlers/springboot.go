@@ -13,8 +13,6 @@ import (
 // 这是核心 handler，完全对应 Python 版的 main 流程。
 type SpringBootHandler struct{}
 
-func (SpringBootHandler) Type() string { return "Spring Boot Fat JAR" }
-
 func (h SpringBootHandler) Handle(jarPath, projectDir, projectName string, opts Options) error {
 	// 1) 分析 fat jar 结构
 	a, err := analyzer.AnalyzeSpringBootJar(jarPath)

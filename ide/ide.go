@@ -42,14 +42,14 @@ func Find() (string, string, error) {
 
 // Open 启动 IDEA 并打开指定项目目录（异步，不阻塞调用方）。
 // projectDir 为要打开的 Maven 项目根目录（绝对路径）。
-// 内部调用 Find 定位 IDEA，失败返回错误。
-func Open(projectDir string) error {
+// 内部调用 Find 定位 IDEA，失败返回错误。返回的 strategy 描述命中了哪种发现方式（PATH/Toolbox/standalone），
+// 供调用方记日志（便于调试为什么打开了某个版本的 IDEA）。
+func Open(projectDir string) (strategy string, err error) {
 	path, strategy, err := Find()
 	if err != nil {
-		return err
+		return "", err
 	}
-	_ = strategy
-	return launch(path, projectDir)
+	return strategy, launch(path, projectDir)
 }
 
 // ErrNotFound 表示系统中未找到 IntelliJ IDEA。

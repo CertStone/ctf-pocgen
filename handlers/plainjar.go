@@ -14,8 +14,6 @@ import (
 // 普通 jar 不含第三方依赖，提示用户从中央仓库按需补充。
 type PlainJarHandler struct{}
 
-func (PlainJarHandler) Type() string { return "Plain JAR" }
-
 func (h PlainJarHandler) Handle(jarPath, projectDir, projectName string, opts Options) error {
 	_, manifest, err := analyzer.AnalyzeArchive(jarPath)
 	if err != nil {

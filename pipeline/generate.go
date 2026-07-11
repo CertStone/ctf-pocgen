@@ -22,11 +22,10 @@ type Options = handlers.Options
 // Result 描述一次生成的结果，供调用方（CLI/TUI）做后续提示。
 type Result struct {
 	ProjectDir string
-	Type       analyzer.ArchiveType
-	TypeName   string
 }
 
 // logger 封装 stdout/stderr 的 [*]/[+]/[!]/[-] 前缀输出，对应 Python 消息约定。
+// info/ok 进 stdout，warn 进 stderr（便于 2>/dev/null 过滤警告，与 cli.go 的 die 一致）。
 type logger struct {
 	out, errOut io.Writer
 }
@@ -37,7 +36,9 @@ func newLogger() *logger {
 
 func (l *logger) info(format string, a ...interface{}) { fmt.Fprintf(l.out, "[*] "+format+"\n", a...) }
 func (l *logger) ok(format string, a ...interface{})   { fmt.Fprintf(l.out, "[+] "+format+"\n", a...) }
-func (l *logger) warn(format string, a ...interface{}) { fmt.Fprintf(l.out, "[!] "+format+"\n", a...) }
+func (l *logger) warn(format string, a ...interface{}) {
+	fmt.Fprintf(l.errOut, "[!] "+format+"\n", a...)
+}
 
 // Run 执行完整生成流程。
 //
@@ -45,7 +46,7 @@ func (l *logger) warn(format string, a ...interface{}) { fmt.Fprintf(l.out, "[!]
 // projectDir: 输出项目目录绝对路径（已由调用方确定）
 // projectName: 项目名
 // opts: 选项
-// log: 是否输出进度信息（CLI=true；TUI 批量可关闭或自行收集）
+// log: 是否输出进度信息（CLI 与 TUI 退出 alt-screen 后的批量生成都传 true，让用户看到进度）
 func Run(jarPath, projectDir, projectName string, opts Options, log bool) (*Result, error) {
 	l := newLogger()
 	if !log {
@@ -96,14 +97,14 @@ func Run(jarPath, projectDir, projectName string, opts Options, log bool) (*Resu
 
 	// 5) 若请求自动打开 IDEA（生成已成功，打开失败只 warn 不中断）
 	if opts.OpenIDEA {
-		if err := ide.Open(projectDir); err != nil {
+		if strategy, err := ide.Open(projectDir); err != nil {
 			l.warn("打开 IDEA 失败（不影响已生成的项目）: %v", err)
 		} else {
-			l.ok("已用 IDEA 打开: %s", projectDir)
+			l.ok("已用 IDEA 打开（发现方式: %s）: %s", strategy, projectDir)
 		}
 	}
 
-	return &Result{ProjectDir: projectDir, Type: t, TypeName: t.String()}, nil
+	return &Result{ProjectDir: projectDir}, nil
 }
 
 // ResolveProjectName 解析默认项目名：poc-{jar名去后缀}。

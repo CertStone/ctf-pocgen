@@ -149,8 +149,13 @@ func dedupSorted(s []string) []string {
 }
 
 // launch 在 Windows 上异步启动 IDEA 打开项目。
-// 用 cmd /c start 让 IDEA 脱离当前进程独立运行，不阻塞。
+// 直接调 idea64.exe（不经 cmd /c start）：IDEA 是 GUI 程序，cmd.Start() 后
+// 立即返回不会阻塞；且直接传参能正确处理 Unicode 路径（cmd.exe 按 OEM 代码页
+// 解码会破坏中文路径）。
 func launch(ideaPath, projectDir string) error {
-	cmd := exec.Command("cmd", "/c", "start", "", ideaPath, projectDir)
+	cmd := exec.Command(ideaPath, projectDir)
+	cmd.Stdin = nil
+	cmd.Stdout = nil
+	cmd.Stderr = nil
 	return cmd.Start()
 }

@@ -52,6 +52,9 @@ ctf-pocgen challenge.jar --exclude-jars 'log4j*,slf4j*'
 
 # 目标目录已存在时强制覆盖
 ctf-pocgen challenge.jar --force
+
+# 生成后自动用 IDEA 打开项目
+ctf-pocgen challenge.jar --open-idea
 ```
 
 参数可放在 jar 路径之前或之后（与 Python argparse 风格一致）。
@@ -64,7 +67,7 @@ ctf-pocgen challenge.jar --force
 ctf-pocgen
 ```
 
-进入交互界面：浏览当前目录的 `.jar/.war/.ear` 文件与子目录 → 选中文件 → 确认处理 →（若在子目录）选择生成位置 → 是否继续挑选 → 批量生成。
+进入交互界面：浏览当前目录的 `.jar/.war/.ear` 文件与子目录 → 选中文件 → 确认处理 →（若在子目录）选择生成位置 → 是否继续挑选 → 是否用 IDEA 打开 → 批量生成。
 
 ### 全部选项
 
@@ -75,6 +78,7 @@ Flags:
   -force-jdk string     强制指定 JDK 版本（如 1.8 / 11 / 17），覆盖自动检测
   -exclude-jars string   逗号分隔的 glob 模式，匹配的 lib jar 不引入（如 'log4j*,slf4j*'）
   -force                目标项目目录已存在时强制覆盖（先删除再生成）
+  -open-idea            生成后自动用 IntelliJ IDEA 打开项目
 ```
 
 ## 📂 生成的项目结构
@@ -156,8 +160,9 @@ analyzer/    manifest 解析、JDK 检测、类型检测
 extractor/   challenge-classes 打包 + lib 复制
 generator/   pom/Poc.java/README/脚本模板（逐字复刻）
 handlers/    SpringBoot / WAR / PlainJar 三种处理器
+ide/         跨平台发现并启动 IntelliJ IDEA（build tags 分平台）
 pipeline/    检测→路由→生成 编排（CLI 与 TUI 共用入口）
-tui/         文件浏览/确认/位置选择 状态机
+tui/         文件浏览/确认/位置选择/打开IDEA 状态机
 ```
 
 ## 🧪 测试

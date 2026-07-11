@@ -20,8 +20,6 @@ type WARHandler struct {
 	IncludeLibProvided bool
 }
 
-func (h WARHandler) Type() string { return "WAR" }
-
 func (h WARHandler) Handle(jarPath, projectDir, projectName string, opts Options) error {
 	names, manifest, err := analyzer.AnalyzeArchive(jarPath)
 	if err != nil {

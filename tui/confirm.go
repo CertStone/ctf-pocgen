@@ -13,9 +13,6 @@ type confirmModel struct {
 	yes      bool // 当前聚焦
 	accepted bool
 	done     bool
-
-	// 复用 list 的渲染尺寸（可选）
-	width, height int
 }
 
 func newConfirm(prompt string, defaultYes bool) confirmModel {
@@ -41,7 +38,8 @@ func (m confirmModel) Update(msg tea.Msg) (confirmModel, tea.Cmd) {
 	case "n":
 		m.accepted = false
 		m.done = true
-	case "esc", "ctrl+c":
+	case "esc":
+		// ctrl+c 由顶层 Update 拦截，这里只处理 esc
 		m.accepted = false
 		m.done = true
 	}

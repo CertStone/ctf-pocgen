@@ -39,7 +39,8 @@ func standaloneCandidates() []string {
 		}
 		for _, e := range entries {
 			name := e.Name()
-			if !strings.HasPrefix(name, prefix) && !strings.HasPrefix(name, "IntelliJ IDEA") {
+			// 匹配 IntelliJ IDEA*（含 Ultimate / Community）
+			if !strings.HasPrefix(name, prefix) {
 				continue
 			}
 			if !strings.HasSuffix(name, ".app") {

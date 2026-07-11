@@ -15,6 +15,4 @@ type Options struct {
 type Handler interface {
 	// Handle 执行生成。jarPath 为源 jar 绝对路径，projectDir 为输出项目目录（已创建）。
 	Handle(jarPath, projectDir, projectName string, opts Options) error
-	// Type 返回 handler 对应的人类可读类型名（用于提示）。
-	Type() string
 }

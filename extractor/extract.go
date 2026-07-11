@@ -150,9 +150,11 @@ func ExtractLibJars(jarPath string, libEntries []string, libDir string, excludeP
 }
 
 // CopyJarAsFile 把整个源 jar 文件复制为 dstPath（用于普通 jar：自身作为 challenge-classes）。
-func CopyJarAsFile(srcJarPath, dstPath string) error {
+// CopyJarAsFile 把整个源 jar 文件复制为 dstPath（普通 jar 场景）。
+// 关闭输出文件的错误（磁盘满等）会被正确返回，不静默丢失。
+func CopyJarAsFile(srcJarPath, dstPath string) (err error) {
 	if dir := filepath.Dir(dstPath); dir != "" {
-		if err := os.MkdirAll(dir, 0o755); err != nil {
+		if err = os.MkdirAll(dir, 0o755); err != nil {
 			return err
 		}
 	}
@@ -165,7 +167,12 @@ func CopyJarAsFile(srcJarPath, dstPath string) error {
 	if err != nil {
 		return err
 	}
-	defer out.Close()
+	// 输出文件 Close 错误（磁盘满、网络盘 flush）必须返回，不能被 defer 吞掉
+	defer func() {
+		if cerr := out.Close(); err == nil {
+			err = cerr
+		}
+	}()
 	_, err = io.CopyBuffer(out, in, make([]byte, copyChunkSize))
 	return err
 }
@@ -181,7 +188,7 @@ func excluded(name string, patterns []string) bool {
 	return false
 }
 
-func copyZipEntryToFile(f *zip.File, dstPath string) error {
+func copyZipEntryToFile(f *zip.File, dstPath string) (err error) {
 	rc, err := f.Open()
 	if err != nil {
 		return err
@@ -191,7 +198,11 @@ func copyZipEntryToFile(f *zip.File, dstPath string) error {
 	if err != nil {
 		return err
 	}
-	defer out.Close()
+	defer func() {
+		if cerr := out.Close(); err == nil {
+			err = cerr
+		}
+	}()
 	_, err = io.CopyBuffer(out, rc, make([]byte, copyChunkSize))
 	return err
 }
