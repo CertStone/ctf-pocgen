@@ -100,6 +100,7 @@ func runCLI(args []string) {
 	forceJDK := fs.String("force-jdk", "", "强制指定 JDK 版本（如 1.8 / 11 / 17），覆盖自动检测")
 	excludeJars := fs.String("exclude-jars", "", "逗号分隔的 glob 模式，匹配的 lib jar 不引入（如 'log4j*,slf4j*'）")
 	force := fs.Bool("force", false, "目标项目目录已存在时强制覆盖（先删除再生成）")
+	openIDEA := fs.Bool("open-idea", false, "生成后自动用 IntelliJ IDEA 打开项目")
 
 	// Go flag 默认在遇到首个非 flag 参数后停止解析（不支持 interspersed）。
 	// 为与 Python argparse 行为一致（允许 jar 与 flag 混排），先把参数重排为
@@ -155,6 +156,7 @@ func runCLI(args []string) {
 	opts := pipeline.Options{
 		ForceJDK:        *forceJDK,
 		ExcludePatterns: parseExcludePatterns(*excludeJars),
+		OpenIDEA:        *openIDEA,
 	}
 	if len(opts.ExcludePatterns) > 0 {
 		info("排除模式: %s", strings.Join(opts.ExcludePatterns, ", "))

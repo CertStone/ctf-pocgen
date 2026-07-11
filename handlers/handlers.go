@@ -8,6 +8,7 @@ package handlers
 type Options struct {
 	ForceJDK        string   // --force-jdk
 	ExcludePatterns []string // --exclude-jars 解析后
+	OpenIDEA        bool     // --open-idea：生成后自动打开 IDEA
 }
 
 // Handler 处理一种归档类型。

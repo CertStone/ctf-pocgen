@@ -33,6 +33,7 @@ type Model struct {
 	pending  fsItem // 当前选中待确认的文件项
 	selected []Selection
 	quit     bool
+	openIDEA bool // 用户是否要求生成后打开 IDEA（stateConfirmOpenIDEA 收集）
 }
 
 type tuiState int
@@ -42,6 +43,7 @@ const (
 	stateConfirmFile
 	stateChooseLocation
 	stateConfirmMore
+	stateConfirmOpenIDEA
 	stateDone
 )
 
@@ -68,6 +70,9 @@ func (m Model) Selected() []Selection { return m.selected }
 
 // Quit 表示用户是否已退出（含 Ctrl+C）。
 func (m Model) Quit() bool { return m.quit }
+
+// OpenIDEA 返回用户是否要求生成后用 IDEA 打开项目。
+func (m Model) OpenIDEA() bool { return m.openIDEA }
 
 func (m Model) Init() tea.Cmd { return nil }
 
@@ -100,6 +105,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateChooseLocation(msg)
 	case stateConfirmMore:
 		return m.updateConfirmMore(msg)
+	case stateConfirmOpenIDEA:
+		return m.updateConfirmOpenIDEA(msg)
 	}
 	return m, nil
 }
@@ -195,7 +202,23 @@ func (m Model) updateConfirmMore(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.state = stateBrowse
 		return m, nil
 	}
-	// 结束选择
+	// 结束选择 → 询问是否打开 IDEA
+	m.confirm = newConfirm("生成后是否自动用 IntelliJ IDEA 打开项目？", false)
+	m.state = stateConfirmOpenIDEA
+	return m, nil
+}
+
+// updateConfirmOpenIDEA 处理"是否打开 IDEA"确认（默认 No）。
+func (m Model) updateConfirmOpenIDEA(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if _, ok := msg.(tea.KeyMsg); !ok {
+		return m, nil
+	}
+	cm, _ := m.confirm.Update(msg)
+	m.confirm = cm
+	if !m.confirm.done {
+		return m, nil
+	}
+	m.openIDEA = m.confirm.accepted
 	m.state = stateDone
 	return m, tea.Quit
 }
@@ -211,6 +234,8 @@ func (m Model) View() string {
 	case stateConfirmMore:
 		summary := summaryOf(m.selected)
 		return docStyle.Render(summary + "\n\n" + m.confirm.View())
+	case stateConfirmOpenIDEA:
+		return docStyle.Render(m.confirm.View())
 	case stateDone:
 		return "处理完成。"
 	}

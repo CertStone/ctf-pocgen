@@ -130,11 +130,20 @@ func TestStateMachine_FullFlow(t *testing.T) {
 	if m.state != stateConfirmMore {
 		t.Fatalf("同目录应进入 stateConfirmMore, got %d", m.state)
 	}
-	// 确认更多 = No（默认 No，直接 Enter）→ 结束
+	// 确认更多 = No（默认 No，直接 Enter）→ 进入"是否打开 IDEA"确认
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m = m2.(Model)
+	if m.state != stateConfirmOpenIDEA {
+		t.Fatalf("应进入 stateConfirmOpenIDEA, got %d", m.state)
+	}
+	// 确认打开 IDEA = No（默认 No，直接 Enter）→ 结束
 	m2, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	m = m2.(Model)
 	if m.state != stateDone {
 		t.Fatalf("应进入 stateDone, got %d", m.state)
+	}
+	if m.OpenIDEA() {
+		t.Error("默认 No，OpenIDEA 应为 false")
 	}
 	// 应有一个选中项，输出目录=root
 	if len(m.Selected()) != 1 {
@@ -149,6 +158,40 @@ func TestStateMachine_FullFlow(t *testing.T) {
 	// 应返回 tea.Quit 命令
 	if cmd == nil {
 		t.Error("stateDone 应返回 tea.Quit 命令")
+	}
+}
+
+// TestStateMachine_OpenIDEA_Yes 验证"是否打开 IDEA"选 Yes 时 OpenIDEA() 为 true。
+func TestStateMachine_OpenIDEA_Yes(t *testing.T) {
+	dir := t.TempDir()
+	jarPath := filepath.Join(dir, "app.jar")
+	os.WriteFile(jarPath, []byte("PK\x03\x04fake"), 0o644)
+
+	m := New(dir)
+	for i, it := range m.browser.Items() {
+		if fi, ok := it.(fsItem); ok && fi.kind == kindFile {
+			m.browser.Select(i)
+			break
+		}
+	}
+	// 选文件 → 确认 Yes → 继续更多 No → 打开 IDEA Yes
+	var tmp tea.Model
+	tmp, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter}) // 选中文件
+	m = tmp.(Model)
+	tmp, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter}) // 确认处理 Yes
+	m = tmp.(Model)
+	tmp, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter}) // 继续更多 No
+	m = tmp.(Model)
+	// 进入 stateConfirmOpenIDEA，切到 Yes 再 Enter
+	tmp, _ = m.Update(tea.KeyMsg{Type: tea.KeyRight}) // No→Yes
+	m = tmp.(Model)
+	tmp, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter}) // 确认 Yes
+	m = tmp.(Model)
+	if m.state != stateDone {
+		t.Fatalf("应进入 stateDone, got %d", m.state)
+	}
+	if !m.OpenIDEA() {
+		t.Error("选 Yes 后 OpenIDEA 应为 true")
 	}
 }
 

@@ -12,6 +12,7 @@ import (
 
 	"ctf-pocgen/analyzer"
 	"ctf-pocgen/handlers"
+	"ctf-pocgen/ide"
 )
 
 // Options 是 handlers.Options 的类型别名，CLI 与 TUI 通过它向 pipeline 传递选项。
@@ -91,6 +92,15 @@ func Run(jarPath, projectDir, projectName string, opts Options, log bool) (*Resu
 	}
 	if err := h.Handle(jarPath, projectDir, projectName, opts); err != nil {
 		return nil, err
+	}
+
+	// 5) 若请求自动打开 IDEA（生成已成功，打开失败只 warn 不中断）
+	if opts.OpenIDEA {
+		if err := ide.Open(projectDir); err != nil {
+			l.warn("打开 IDEA 失败（不影响已生成的项目）: %v", err)
+		} else {
+			l.ok("已用 IDEA 打开: %s", projectDir)
+		}
 	}
 
 	return &Result{ProjectDir: projectDir, Type: t, TypeName: t.String()}, nil

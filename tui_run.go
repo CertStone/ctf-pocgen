@@ -51,7 +51,8 @@ func runTUI() {
 			continue
 		}
 
-		_, err := pipeline.Run(sel.JarPath, projectDir, projectName, pipeline.Options{}, true)
+		_, err := pipeline.Run(sel.JarPath, projectDir, projectName,
+			pipeline.Options{OpenIDEA: result.OpenIDEA()}, true)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "[-] 生成失败: %v\n", err)
 			continue
